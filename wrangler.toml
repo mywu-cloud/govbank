@@ -1,0 +1,11 @@
+name = "govbank"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "frontend"
+
+# 執行 `wrangler d1 create govbank-db` 後，把印出來的 database_id 貼在這裡，
+# 並在 Cloudflare Pages 專案 → Settings → Functions → D1 database bindings
+# 也設定一次：Variable name = DB, D1 database = govbank-db
+[[d1_databases]]
+binding = "DB"
+database_name = "govbank-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
