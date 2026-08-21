@@ -1,0 +1,40 @@
+name: Fetch GovBank Buy&Sell Data
+
+on:
+  schedule:
+    # 每個交易日（週一～週五）台北時間 15:00 = UTC 07:00
+    - cron: "0 7 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "要補抓的交易日 (YYYY-MM-DD)，留空預設抓今天"
+        required: false
+        default: ""
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Fetch data into D1
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_DATABASE_ID: ${{ secrets.CF_DATABASE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            python backend/fetch_data.py --date "${{ github.event.inputs.date }}"
+          else
+            python backend/fetch_data.py
+          fi
