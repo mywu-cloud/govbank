@@ -8,4 +8,4 @@ pages_build_output_dir = "frontend"
 [[d1_databases]]
 binding = "DB"
 database_name = "govbank-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "53a24e63-5b60-4859-b956-9af6ff3280ff"
