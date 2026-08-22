@@ -1,4 +1,27 @@
+/* ==========================================================================
+   八大官股行庫買賣動向 — 樣式
+   預設：淺色主題；可透過右上角切換鈕改為深色（設定會存在瀏覽器中）。
+   字體：Helvetica Neue（西文/數字），中文字自動 fallback 到系統中文字型。
+   全站文字最小 13px。
+   ========================================================================== */
+
 :root {
+  /* ---- 淺色主題（預設） ---- */
+  --bg: #f4f6fb;
+  --bg-soft: #ffffff;
+  --card: #ffffff;
+  --border: #dde3ee;
+  --text: #1a2233;
+  --text-dim: #5b6478;
+  --accent: #2f6fed;
+  --accent-contrast: #ffffff;
+  --up: #d92d20;    /* 台股慣例：紅漲 / 買超 */
+  --down: #16874f;  /* 台股慣例：綠跌 / 賣超 */
+  --shadow: 0 1px 2px rgba(20, 30, 60, 0.06), 0 1px 1px rgba(20, 30, 60, 0.04);
+  --radius: 12px;
+}
+
+:root[data-theme="dark"] {
   --bg: #0f1420;
   --bg-soft: #161d2e;
   --card: #1b2338;
@@ -6,10 +29,10 @@
   --text: #e8ecf6;
   --text-dim: #8f9bbd;
   --accent: #4f8cff;
-  --up: #ff4d4f;    /* 台股慣例：紅漲 / 買超 */
-  --down: #21c55d;  /* 台股慣例：綠跌 / 賣超 */
-  --radius: 12px;
-  font-size: 15px;
+  --accent-contrast: #ffffff;
+  --up: #ff4d4f;
+  --down: #21c55d;
+  --shadow: none;
 }
 
 * { box-sizing: border-box; }
@@ -17,16 +40,28 @@
 html, body {
   margin: 0;
   padding: 0;
+  min-height: 100%;
+}
+
+body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Noto Sans TC",
-    "Microsoft JhengHei", sans-serif;
+  font-family: "Helvetica Neue", Helvetica, Arial,
+    "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 a { color: var(--accent); }
 
+/* ---------------------------------------------------------------------- */
+/* Header                                                                  */
+/* ---------------------------------------------------------------------- */
+
 header.top {
-  background: linear-gradient(120deg, #131a2b, #1c2740);
+  background: var(--card);
   border-bottom: 1px solid var(--border);
   padding: 18px 24px 0;
   position: sticky;
@@ -34,21 +69,49 @@ header.top {
   z-index: 10;
 }
 
+.top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 header.top h1 {
   margin: 0 0 4px;
-  font-size: 1.35rem;
-  letter-spacing: 0.02em;
+  font-size: 21px;
+  letter-spacing: 0.01em;
 }
 
 header.top .subtitle {
   margin: 0 0 14px;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: 13px;
+  line-height: 1.5;
 }
+
+.theme-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 nav.tabs {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 nav.tabs a {
@@ -57,7 +120,7 @@ nav.tabs a {
   color: var(--text-dim);
   text-decoration: none;
   border-bottom: 2px solid transparent;
-  font-size: 0.92rem;
+  font-size: 14px;
 }
 
 nav.tabs a.active {
@@ -65,6 +128,10 @@ nav.tabs a.active {
   border-bottom-color: var(--accent);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------- */
+/* Layout                                                                  */
+/* ---------------------------------------------------------------------- */
 
 main {
   max-width: 1180px;
@@ -82,12 +149,14 @@ main {
   border-radius: var(--radius);
   padding: 14px 16px;
   margin-bottom: 18px;
+  box-shadow: var(--shadow);
 }
 
 .toolbar label {
+  display: block;
   color: var(--text-dim);
-  font-size: 0.82rem;
-  margin-right: 6px;
+  font-size: 13px;
+  margin: 0 0 3px 2px;
 }
 
 .toolbar select,
@@ -97,14 +166,15 @@ main {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
-  font-size: 0.88rem;
+  font-size: 14px;
+  font-family: inherit;
 }
 
 .toolbar .spacer { flex: 1; }
 
 .toolbar .status {
   color: var(--text-dim);
-  font-size: 0.8rem;
+  font-size: 13px;
 }
 
 .btn-group {
@@ -119,13 +189,16 @@ main {
   color: var(--text-dim);
   border: none;
   padding: 7px 14px;
-  font-size: 0.85rem;
+  font-size: 13px;
+  font-family: inherit;
   cursor: pointer;
 }
 
+.btn-group button + button { border-left: 1px solid var(--border); }
+
 .btn-group button.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-contrast);
 }
 
 .card {
@@ -134,11 +207,12 @@ main {
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 18px;
+  box-shadow: var(--shadow);
 }
 
 .card h2 {
   margin: 0 0 12px;
-  font-size: 1rem;
+  font-size: 15px;
   color: var(--text-dim);
   font-weight: 600;
 }
@@ -148,10 +222,19 @@ main {
   height: 320px;
 }
 
+/* ---------------------------------------------------------------------- */
+/* Table                                                                   */
+/* ---------------------------------------------------------------------- */
+
+#table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 14px;
 }
 
 thead th {
@@ -179,7 +262,7 @@ thead th.sorted::after {
 tbody td {
   text-align: right;
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
@@ -189,7 +272,7 @@ tbody td:nth-child(3) {
   text-align: left;
 }
 
-tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+tbody tr:hover { background: var(--bg-soft); }
 
 .stock-id { color: var(--text-dim); font-variant-numeric: tabular-nums; }
 .stock-name { font-weight: 600; }
@@ -200,10 +283,11 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 
 .pill {
   display: inline-block;
-  padding: 1px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 0.72rem;
-  background: rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
   color: var(--text-dim);
 }
 
@@ -230,7 +314,7 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 6px 10px;
-  font-size: 0.78rem;
+  font-size: 13px;
 }
 
 .bank-chip .bank-name { color: var(--text-dim); margin-right: 6px; }
@@ -238,7 +322,8 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
 .expand-btn {
   cursor: pointer;
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 13px;
+  font-family: inherit;
   background: none;
   border: none;
   padding: 0;
@@ -248,17 +333,79 @@ tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
   text-align: center;
   color: var(--text-dim);
   padding: 40px 0;
+  font-size: 14px;
 }
 
 .footnote {
   color: var(--text-dim);
-  font-size: 0.76rem;
+  font-size: 13px;
   margin-top: 8px;
   line-height: 1.6;
 }
 
-@media (max-width: 720px) {
-  main { padding: 16px; }
-  table { font-size: 0.78rem; }
-  .chart-wrap { height: 260px; }
+/* ---------------------------------------------------------------------- */
+/* Responsive — 平板 (<=1024px)                                            */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 1024px) {
+  main {
+    max-width: 100%;
+    padding: 18px 20px 50px;
+  }
+
+  .chart-wrap { height: 280px; }
+
+  header.top { padding: 16px 20px 0; }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Responsive — 手機 (<=640px)                                             */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  header.top { padding: 14px 16px 0; }
+
+  .top-row { flex-wrap: wrap; }
+
+  header.top h1 { font-size: 18px; }
+
+  header.top .subtitle { font-size: 13px; }
+
+  .theme-toggle { padding: 6px 12px; font-size: 13px; }
+
+  nav.tabs a { padding: 9px 12px; font-size: 13px; }
+
+  main { padding: 14px 12px 40px; }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .toolbar > div { width: 100%; }
+
+  .toolbar select,
+  .toolbar input[type="date"] {
+    width: 100%;
+  }
+
+  .toolbar .spacer { display: none; }
+
+  .toolbar .status { text-align: left; }
+
+  .btn-group { width: 100%; }
+  .btn-group button { flex: 1; }
+
+  .card { padding: 12px; }
+
+  .card h2 { font-size: 14px; }
+
+  .chart-wrap { height: 220px; }
+
+  table { font-size: 13px; }
+
+  thead th, tbody td { padding: 7px 8px; }
+
+  .footnote { font-size: 13px; }
 }
