@@ -25,6 +25,13 @@
     return "num-flat";
   }
 
+  // Chart.js 的顏色是用 JS 直接設定，不會自動跟著 CSS 變數（主題）變化，
+  // 所以每次畫圖前都從目前套用的 CSS 變數讀取顏色。
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
   function buildUrl() {
     const params = new URLSearchParams();
     if (startInput.value) params.set("start", startInput.value);
@@ -88,7 +95,9 @@
     const values = top.map((r) =>
       key === "net_amount" ? Math.round(r[key] / 10000) : Math.round(r[key] / 1000)
     );
-    const colors = values.map((v) => (v >= 0 ? "#ff4d4f" : "#21c55d"));
+    const upColor = cssVar("--up", "#d92d20");
+    const downColor = cssVar("--down", "#16874f");
+    const colors = values.map((v) => (v >= 0 ? upColor : downColor));
 
     const label = currentDir === "asc" ? "賣超排行" : "買超排行";
     chartTitle.textContent =
@@ -117,8 +126,14 @@
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: "rgba(255,255,255,0.06)" }, ticks: { color: "#8f9bbd" } },
-          y: { grid: { display: false }, ticks: { color: "#e8ecf6" } },
+          x: {
+            grid: { color: cssVar("--border", "#dde3ee") },
+            ticks: { color: cssVar("--text-dim", "#5b6478"), font: { size: 12 } },
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: cssVar("--text", "#1a2233"), font: { size: 12 } },
+          },
         },
       },
     });
@@ -200,6 +215,11 @@
     statusText.textContent = "載入失敗：" + err.message;
     console.error(err);
   }
+
+  // 切換淺色/深色主題時，圖表要用新的顏色重畫。
+  window.addEventListener("govbank:themechange", () => {
+    if (currentRows.length) renderChart(sortedRows());
+  });
 
   load(true).catch(showError);
 })();
