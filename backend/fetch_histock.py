@@ -273,6 +273,10 @@ class D1Client:
             json={"sql": sql, "params": params or []},
             timeout=60,
         )
+        if not resp.ok:
+            # D1 的錯誤訊息（例如「too many SQL variables」）都在 response body 裡，
+            # 先印出來方便除錯，raise_for_status() 本身不會帶 body。
+            print(f"[error] D1 回應 {resp.status_code}：{resp.text[:2000]}", file=sys.stderr)
         resp.raise_for_status()
         payload = resp.json()
         if not payload.get("success", False):
@@ -287,9 +291,13 @@ def d1_upsert(db: D1Client, table: str, columns: list[str], rows: list[dict[str,
     update_cols = [c for c in columns if c not in conflict_cols]
     set_clause = ", ".join(f"{c}=excluded.{c}" for c in update_cols)
 
+    # D1 HTTP API 每個 query 最多只能綁 100 個參數，所以批次大小要依欄位數動態算，
+    # 不能固定用 D1_BATCH_SIZE（欄位多的表格，200 筆 x 7 欄 = 1400 個參數會直接被拒絕）。
+    batch_size = max(1, min(D1_BATCH_SIZE, 100 // len(columns)))
+
     total = 0
-    for i in range(0, len(rows), D1_BATCH_SIZE):
-        chunk = rows[i : i + D1_BATCH_SIZE]
+    for i in range(0, len(rows), batch_size):
+        chunk = rows[i : i + batch_size]
         placeholders_one = "(" + ", ".join(["?"] * len(columns)) + ")"
         values_sql = ", ".join([placeholders_one] * len(chunk))
         sql = (
