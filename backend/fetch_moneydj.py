@@ -21,7 +21,7 @@
   + 可以指定任一天 -> 能補歷史資料（下拉選單目前可選到民國 114 年）
   - 每家券商只有買超、賣超各 Top50，不是全市場逐檔明細
   - 張數 Top50 跟金額 Top50 的股票集合不一定相同：只出現在其中一邊的股票，
-    另一邊用當日收盤價估算（需要 FINMIND_TOKEN 抓收盤價；沒有就填 0）
+    另一邊用當日收盤價估算（收盤價來自證交所＋櫃買中心；抓不到就填 0）
 
 執行方式：
   python backend/fetch_moneydj.py                               # 抓今天 (Asia/Taipei)
@@ -32,7 +32,7 @@
 
 環境變數：
   CF_ACCOUNT_ID / CF_DATABASE_ID / CF_API_TOKEN   寫入 D1 用（--dry-run 不需要）
-  FINMIND_TOKEN   選填，只用免費的 TaiwanStockPrice 抓收盤價
+  FINMIND_TOKEN   選填，收盤價改抓證交所＋櫃買中心官方資料，兩者都失敗才用 FinMind
 """
 
 from __future__ import annotations
@@ -213,9 +213,88 @@ def merge_rows(day: str, bank_name: str,
 # ---------------------------------------------------------------------------
 
 
+TWSE_PRICE_URL = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+TPEX_PRICE_URL = "https://www.tpex.org.tw/www/zh-tw/afterTrading/dailyQuotes"
+
+
+def _num(text: Any) -> float | None:
+    t = re.sub(r"<[^>]+>", "", str(text or "")).replace(",", "").strip()
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def _get_json(url: str, params: dict[str, str], retries: int = 3) -> dict[str, Any]:
+    last_err: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.get(url, params=params, headers=HEADERS, timeout=60)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as err:  # noqa: BLE001
+            last_err = err
+            time.sleep(3 * attempt)
+    raise RuntimeError(f"{url} 失敗：{last_err}")
+
+
+def fetch_price_twse(day: str) -> list[dict[str, Any]]:
+    """證交所每日收盤行情（上市，含 ETF，不含權證）"""
+    j = _get_json(TWSE_PRICE_URL, {"date": day.replace("-", ""), "type": "ALLBUT0999",
+                                   "response": "json"})
+    out = []
+    for t in j.get("tables") or []:
+        fields = t.get("fields") or []
+        if "證券代號" not in fields or "收盤價" not in fields:
+            continue
+        i_id, i_close = fields.index("證券代號"), fields.index("收盤價")
+        i_sign, i_diff = fields.index("漲跌(+/-)"), fields.index("漲跌價差")
+        i_vol = fields.index("成交股數")
+        for d in t.get("data") or []:
+            close = _num(d[i_close])
+            if close is None:
+                continue
+            diff = _num(d[i_diff]) or 0.0
+            if "-" in re.sub(r"<[^>]+>", "", str(d[i_sign])):
+                diff = -diff
+            out.append({"date": day, "stock_id": str(d[i_id]).strip(), "close": close,
+                        "spread": diff, "trading_volume": int(_num(d[i_vol]) or 0)})
+    return out
+
+
+def fetch_price_tpex(day: str) -> list[dict[str, Any]]:
+    """櫃買中心上櫃股票行情"""
+    j = _get_json(TPEX_PRICE_URL, {"date": day.replace("-", "/"), "type": "EW",
+                                   "response": "json"})
+    out = []
+    for t in j.get("tables") or []:
+        fields = [f.strip() for f in (t.get("fields") or [])]
+        if "代號" not in fields or "收盤" not in fields:
+            continue
+        i_id, i_close, i_diff = fields.index("代號"), fields.index("收盤"), fields.index("漲跌")
+        i_vol = fields.index("成交股數")
+        for d in t.get("data") or []:
+            close = _num(d[i_close])
+            if close is None:
+                continue
+            out.append({"date": day, "stock_id": str(d[i_id]).strip(), "close": close,
+                        "spread": _num(d[i_diff]) or 0.0,
+                        "trading_volume": int(_num(d[i_vol]) or 0)})
+    return out
+
+
 def fetch_stock_price(token: str | None, day: str) -> list[dict[str, Any]]:
-    if not token:
-        return []
+    """收盤價：證交所 + 櫃買中心官方免費資料；都失敗才試 FinMind。"""
+    rows: list[dict[str, Any]] = []
+    for name, fn in (("證交所", fetch_price_twse), ("櫃買中心", fetch_price_tpex)):
+        try:
+            got = fn(day)
+            print(f"[info] {name}收盤價 {len(got)} 檔")
+            rows.extend(got)
+        except Exception as err:  # noqa: BLE001
+            print(f"[warn] {name}收盤價失敗：{err}", file=sys.stderr)
+    if rows or not token:
+        return rows
     params = {"dataset": "TaiwanStockPrice", "start_date": day, "end_date": day, "token": token}
     try:
         resp = requests.get(FINMIND_URL, params=params, timeout=60)
