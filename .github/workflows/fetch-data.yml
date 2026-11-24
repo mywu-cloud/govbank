@@ -2,26 +2,42 @@ name: Fetch GovBank Buy&Sell Data
 
 on:
   schedule:
-    # 每個交易日（週一～週五）台北時間 15:00 = UTC 07:00
-    - cron: "0 7 * * 1-5"
+    # 每個交易日（週一～週五）台北時間 18:30 = UTC 10:30
+    # （券商分點資料收盤後要一段時間才會出來，15:00 太早）
+    - cron: "30 10 * * 1-5"
   workflow_dispatch:
     inputs:
       date:
-        description: "要補抓的交易日 (YYYY-MM-DD)，留空預設抓今天"
+        description: "要抓的交易日 (YYYY-MM-DD)，留空預設今天"
         required: false
         default: ""
-      source:
-        description: "資料來源：histock（免費，僅供私人使用，Top30）或 finmind（需要 Sponsor 方案）"
+      start:
+        description: "【僅 moneydj】補資料起日 (YYYY-MM-DD)，填了就忽略 date"
         required: false
-        default: "histock"
+        default: ""
+      end:
+        description: "【僅 moneydj】補資料迄日 (YYYY-MM-DD)，留空預設今天"
+        required: false
+        default: ""
+      include_branches:
+        description: "【僅 moneydj】連各分點一起加總（請求數變多）"
+        required: false
+        default: false
+        type: boolean
+      source:
+        description: "資料來源：moneydj（免費，Top50/家，可補歷史）、histock（免費，Top30，只有最新一天）、finmind（需要 Sponsor）"
+        required: false
+        default: "moneydj"
         type: choice
         options:
+          - moneydj
           - histock
           - finmind
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,13 +56,28 @@ jobs:
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_DATABASE_ID: ${{ secrets.CF_DATABASE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          IN_SOURCE: ${{ github.event.inputs.source }}
+          IN_DATE: ${{ github.event.inputs.date }}
+          IN_START: ${{ github.event.inputs.start }}
+          IN_END: ${{ github.event.inputs.end }}
+          IN_BRANCHES: ${{ github.event.inputs.include_branches }}
         run: |
-          SCRIPT="backend/fetch_histock.py"
-          if [ "${{ github.event.inputs.source }}" = "finmind" ]; then
-            SCRIPT="backend/fetch_data.py"
+          SOURCE="${IN_SOURCE:-moneydj}"   # 排程觸發時沒有 inputs，預設 moneydj
+          ARGS=()
+          case "$SOURCE" in
+            finmind) SCRIPT="backend/fetch_data.py" ;;
+            histock) SCRIPT="backend/fetch_histock.py" ;;
+            *)
+              SCRIPT="backend/fetch_moneydj.py"
+              if [ -n "$IN_START" ]; then
+                ARGS+=(--start "$IN_START")
+                [ -n "$IN_END" ] && ARGS+=(--end "$IN_END")
+              fi
+              [ "$IN_BRANCHES" = "true" ] && ARGS+=(--include-branches)
+              ;;
+          esac
+          if [ ${#ARGS[@]} -eq 0 ] || [ "${ARGS[0]}" != "--start" ]; then
+            [ -n "$IN_DATE" ] && ARGS+=(--date "$IN_DATE")
           fi
-          if [ -n "${{ github.event.inputs.date }}" ]; then
-            python "$SCRIPT" --date "${{ github.event.inputs.date }}"
-          else
-            python "$SCRIPT"
-          fi
+          echo "source=$SOURCE script=$SCRIPT args=${ARGS[*]}"
+          python "$SCRIPT" "${ARGS[@]}"
