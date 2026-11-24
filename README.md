@@ -2,7 +2,11 @@
 
 八大公股銀行（八大官股行庫）每日買賣動向與買賣超排行網站。
 
-- **資料來源**：FinMind 付費 API（`TaiwanStockGovernmentBankBuySell` + `TaiwanStockPrice` + `TaiwanStockInfo`）
+- **資料來源**（GitHub Actions 可切換，預設 `moneydj`）：
+  - `moneydj`：`backend/fetch_moneydj.py`，富邦 MoneyDJ「券商進出排行」，八家券商各自的買超／賣超 Top50，有股票代號、買賣張數與金額，可用 `--start/--end` 補歷史。**僅供私人分析**
+  - `histock`：`backend/fetch_histock.py`，HiStock 八大行庫 Top30 淨額，只有最新一天。**僅供私人分析**
+  - `finmind`：`backend/fetch_data.py`，FinMind Sponsor 資料集 `TaiwanStockGovernmentBankBuySell`（付費）
+  - `FINMIND_TOKEN` 在 moneydj 模式為選填，只用來抓免費的收盤價
 - **資料庫**：Cloudflare D1
 - **後端**：GitHub Actions（排程抓資料）+ Cloudflare Pages Functions（API）
 - **前端**：靜態 HTML/CSS/JS + Chart.js，部署在 Cloudflare Pages
@@ -12,7 +16,9 @@
 ```
 .github/workflows/fetch-data.yml   # 排程：每個交易日收盤後抓資料寫入 D1
 backend/
-  fetch_data.py                    # 抓取腳本（FinMind -> D1）
+  fetch_moneydj.py                 # 抓取腳本（MoneyDJ -> D1，預設）
+  fetch_histock.py                 # 抓取腳本（HiStock -> D1，備援）
+  fetch_data.py                    # 抓取腳本（FinMind -> D1，付費）
   schema.sql                       # D1 資料表結構
   requirements.txt
 functions/api/
@@ -60,12 +66,12 @@ git push -u origin main
 
 | Secret 名稱 | 說明 |
 |---|---|
-| `FINMIND_TOKEN` | FinMind 付費 API token |
+| `FINMIND_TOKEN` | FinMind token（moneydj / histock 模式只用免費資料集，可不填；finmind 模式需 Sponsor） |
 | `CF_ACCOUNT_ID` | Cloudflare 帳號 ID（Dashboard 右側欄可查） |
 | `CF_DATABASE_ID` | 上一步建立的 D1 database_id |
 | `CF_API_TOKEN` | Cloudflare API Token，需有 **D1 Edit** 權限 |
 
-之後每個交易日台北時間 15:00 會自動抓資料；也可以到 Actions 分頁手動 `Run workflow` 先測一次。
+之後每個交易日台北時間 18:30 會自動抓資料；也可以到 Actions 分頁手動 `Run workflow` 先測一次。
 
 ### 3. 串接 Cloudflare Pages
 
@@ -81,7 +87,7 @@ Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
 
 ### 4. 驗證
 
-1. 先手動觸發一次 GitHub Actions，確認 D1 裡有資料（`wrangler d1 execute govbank-db --command="SELECT * FROM gov_bank_stock_daily LIMIT 5" --remote`）
+1. 先手動觸發一次 GitHub Actions，確認 D1 裡有資料（`wrangler d1 execute govbank-db --command="SELECT * FROM gov_bank_daily LIMIT 5" --remote`）
 2. 打開 Cloudflare Pages 給的網址，確認兩個分頁都能讀到資料
 
 ## 待確認事項（上線前務必實測）
